@@ -15,6 +15,11 @@ PORT = 3868
 BUFFER_SIZE = 4096  # Limit buffer size to detect complete message
 MAX_CLIENTS = 5  # Maximum number of clients accepted by the server
 
+result_codes = {
+    'DIAMETER_SUCCESS': 2001,
+    'DIAMETER_UNABLE_TO_COMPLY': 5012,
+}
+
 
 class DiameterMessage:
     """
@@ -49,7 +54,33 @@ class DiameterMessage:
             self.avps[field] = value
 
 
-def generate_CEA(diameter_request):
+def invalid_request(diameter_request):
+    """
+    Method used to respond to invalid Diameter request.
+
+    We define an invalid Diameter request by comparing its command code
+    with the ones that we have support for.
+    """
+    logging.warning("Handling invalid request...")
+    # Creating message header
+    response_header = HDRItem()
+    # Set Diameter message's command code
+    response_header.cmd = diameter_request.command_code
+    # Set Hop-by-Hop and End-to-End
+    initializeHops(response_header)
+
+    # Generating response's AVPs
+    response_avps = list()
+    response_avps.append(
+        encodeAVP('Result-Code', result_codes['DIAMETER_UNABLE_TO_COMPLY']))
+
+    # Generating the actual Diameter response
+    # by joining the header and the AVPs
+    response_message = createRes(response_header, response_avps)
+    return response_message
+
+
+def generate_capability_exchange_answer(diameter_request):
     """
     Method used with the purpose of handling CER requests
     and sending CEA responses.(Capability Exchange)
@@ -59,24 +90,32 @@ def generate_CEA(diameter_request):
     """
 
     # Creating message header
-    CEA_header = HDRItem()
+    cea_header = HDRItem()
     # Set Diameter message's command code
-    CEA_header.cmd = dictCOMMANDname2code('Capabilities-Exchange')
+    cea_header.cmd = dictCOMMANDname2code('Capabilities-Exchange')
     # Set Hop-by-Hop and End-to-End
-    initializeHops(CEA_header)
+    initializeHops(cea_header)
 
     # Generating the CEA message's AVPs
-    CEA_avps = []
-    CEA_avps.append(encodeAVP('Origin-Host', diameter_request.avps['Origin-Host']))
-    CEA_avps.append(encodeAVP('Origin-Realm', diameter_request.avps['Origin-Realm']))
-    CEA_avps.append(encodeAVP('Vendor-Id', diameter_request.avps['Vendor-Id']))
-    CEA_avps.append(encodeAVP('Origin-State-Id', diameter_request.avps['Origin-State-Id']))
-    CEA_avps.append(encodeAVP('Supported-Vendor-Id', diameter_request.avps['Supported-Vendor-Id']))
-    CEA_avps.append(encodeAVP('Acct-Application-Id', diameter_request.avps['Acct-Application-Id']))
+    cea_avps = list()
+    cea_avps.append(encodeAVP(
+        'Origin-Host', diameter_request.avps['Origin-Host']))
+    cea_avps.append(encodeAVP(
+        'Origin-Realm', diameter_request.avps['Origin-Realm']))
+    cea_avps.append(encodeAVP(
+        'Result-Code', result_codes['DIAMETER_SUCCESS']))
+    cea_avps.append(encodeAVP(
+        'Vendor-Id', diameter_request.avps['Vendor-Id']))
+    cea_avps.append(encodeAVP(
+        'Origin-State-Id', diameter_request.avps['Origin-State-Id']))
+    cea_avps.append(encodeAVP(
+        'Supported-Vendor-Id', diameter_request.avps['Supported-Vendor-Id']))
+    cea_avps.append(encodeAVP(
+        'Acct-Application-Id', diameter_request.avps['Acct-Application-Id']))
 
     # Create the Diameter message by joining the header and the AVPs
-    CEA_message = createRes(CEA_header, CEA_avps)
-    return CEA_message
+    cea_message = createRes(cea_header, cea_avps)
+    return cea_message
 
 
 def handle_request(connection, address):
@@ -99,17 +138,17 @@ def handle_request(connection, address):
         # get input ,wait if no data
         try:
             data = connection.recv(BUFFER_SIZE)
-        except:
+        except socket.error:
             break
         # suspect more data (try to get it all without stopping if no data)
         if len(data) == BUFFER_SIZE:
             while 1:
                 try:
                     data += connection.recv(BUFFER_SIZE)
-                except:
+                except socket.error:
                     # error means no more data
                     break
-        # no data found exit loop (posible closed socket)
+        # no data found exit loop (possible closed socket)
         if len(data) == 0:
             break
         else:
@@ -141,16 +180,14 @@ def send_response(socket_connection, request_info):
     stripHdr(request, request_info.encode("hex"))
     diameter_request = DiameterMessage(request)
 
+    cmd_code_responses = {
+        # Capabilities Exchange Request
+        257: generate_capability_exchange_answer
+    }
+
     # Generating a response based on the request info and command code
-    if str(diameter_request.command_code) == '257':
-        # Capabilities Exchange Request, generating and sending an answer
-        response = generate_CEA(diameter_request)
-        # TO DO implement more support command code responses
-    else:
-        # Case when none of the implemented responses
-        # for a specific command code is being present in the request
-        # TO DO generate a specific a message for this scenario
-        response = generate_CEA(diameter_request)
+    response = cmd_code_responses.get(
+        diameter_request.command_code, invalid_request)(diameter_request)
 
     # Sending the message and returning a Diameter Message object
     socket_connection.send(response.decode('hex'))
@@ -183,7 +220,8 @@ def start_diameter_server():
         while True:
             incoming_connection, peer_address = diameter_server.accept()
             logging.warning('Connected to ' + str(peer_address))
-            thread.start_new(handle_request, (incoming_connection, peer_address))
+            thread.start_new(
+                handle_request, (incoming_connection, peer_address))
     except KeyboardInterrupt:
         print "Closing server..."
 
