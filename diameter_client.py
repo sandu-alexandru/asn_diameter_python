@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from libDiameter import *
+from diameter_responses import *
 
 # Diameter specific values for the base AVPs
 ORIGIN_HOST = 'asn.client.test'
@@ -10,6 +10,52 @@ HOST = '127.0.0.1'
 PORT = 3868
 
 
+def generate_generic_request(command_code):
+    """
+    Builds a generic Diameter request, with a Diameter header
+    and the standard AVPs.
+
+    :return: dictionary containing header and AVPs
+    for a generic request on a given command code
+    """
+
+    # Creating the Diameter Message object to base the request on
+    diameter_request = diameter_base.DiameterMessage()
+    diameter_request.command_code = command_code
+    diameter_request.avps['Origin-Host'] = ORIGIN_HOST
+    diameter_request.avps['Origin-Realm'] = ORIGIN_REALM
+
+    # Generating a standard Diameter request
+    generic_request = generate_generic_diameter_message(diameter_request)
+    return generic_request
+
+
+def send_diameter_request(header, avps, connection):
+    """
+
+    :param header: Diameter message header
+    :param avps: Diameter message's AVPs
+    :param connection: socket connection used to send the message
+    :return:
+    """
+
+    # Create the Diameter message by joining the header and the AVPs
+    request_message = createReq(header, avps)
+
+    # send the cer message using the socket connection
+    connection.send(request_message.decode('hex'))
+    # receiving the response for the request
+    response_data = connection.recv(4096)
+
+    # Creating a CEA header to be removed during message decapsulation
+    response = HDRItem()
+    stripHdr(response, response_data.encode("hex"))
+    # Generating the received AVPs from the CEA message
+    response_avps = splitMsgAVPs(response.msg)
+    # returning the decoded AVPs
+    return diameter_base.decode_avp_list(response_avps)
+
+
 def send_cer(connection):
     """
     Method used to send the Capability Exchange Request message
@@ -18,40 +64,25 @@ def send_cer(connection):
     and sends them to the already established socket connection.
 
     :param connection: socket connection
-    :return: list of received AVPs
+    :return: dictionary of received AVPs
     """
 
-    # Creating message header
-    cer_header = HDRItem()
-    # Set Diameter message's command code
-    cer_header.cmd = dictCOMMANDname2code('Capabilities-Exchange')
-    # Set Hop-by-Hop and End-to-End
-    initializeHops(cer_header)
+    # Generating a standard Diameter request
+    generic_request = generate_generic_request(
+        diameter_base.cmd_codes['Capability-Exchange'])
 
-    # Building the AVPs to be encapsulated
-    cer_avps = list()
-    cer_avps.append(encodeAVP('Origin-Host', ORIGIN_HOST))
-    cer_avps.append(encodeAVP('Origin-Realm', ORIGIN_REALM))
+    cer_header = generic_request['header']
+    cer_avps = generic_request['avps']
+
+    # Appending the CER specific AVPs
     cer_avps.append(encodeAVP('Vendor-Id', 11))
     cer_avps.append(encodeAVP('Origin-State-Id', 1094807040))
     cer_avps.append(encodeAVP('Supported-Vendor-Id', 11))
     cer_avps.append(encodeAVP('Acct-Application-Id', 16777265))
 
-    # Create the Diameter message by joining the header and the AVPs
-    cer_message = createReq(cer_header, cer_avps)
-
-    # send the cer message using the socket connection
-    connection.send(cer_message.decode('hex'))
-    # receiving the response for the request
-    cea_info = connection.recv(4096)
-
-    # Creating a CEA header to be removed during message decapsulation
-    cea_header = HDRItem()
-    stripHdr(cea_header, cea_info.encode("hex"))
-    # Generating the received AVPs from the CEA message
-    cea_response_avps = splitMsgAVPs(cea_header.msg)
-    # returning the decoded AVPs
-    return decode_avp_list(cea_response_avps)
+    # returning a dictionary of the received AVPs
+    avps_dict = send_diameter_request(cer_header, cer_avps, connection)
+    return avps_dict
 
 
 def send_invalid_message(connection):
@@ -62,54 +93,49 @@ def send_invalid_message(connection):
     and sends them to the already established socket connection.
 
     :param connection: socket connection
+    :return: dictionary of received AVPs
+    """
+
+    # Generating a standard Diameter request
+    generic_request = generate_generic_request(
+        diameter_base.cmd_codes['Re-Auth'])
+
+    invalid_message_header = generic_request['header']
+    invalid_message_avps = generic_request['avps']
+
+    # Appending to the generic request an additional AVP
+    invalid_message_avps.append(encodeAVP('Vendor-Id', 11))
+
+    # returning a dictionary of the received AVPs
+    avps_dict = send_diameter_request(
+        invalid_message_header, invalid_message_avps, connection)
+    return avps_dict
+
+
+def send_dwr(connection):
+    """
+    Method used to send an invalid Diameter Request message
+    Encodes in Hex each AVP, appends them to the Diameter header,
+    build a Diameter message based on those values,
+    and sends them to the already established socket connection.
+
+    :param connection: socket connection
     :return: list of received AVPs
     """
 
-    # Creating message header
-    invalid_message_header = HDRItem()
-    # Set Diameter message's command code -> 258
-    invalid_message_header.cmd = dictCOMMANDname2code('Re-Auth')
-    # Set Hop-by-Hop and End-to-End
-    initializeHops(invalid_message_header)
+    # Generating a standard Diameter request
+    generic_request = generate_generic_request(
+        diameter_base.cmd_codes['Device-Watchdog'])
 
-    # Building the AVPs to be encapsulated
-    invalid_message_avps = list()
-    invalid_message_avps.append(encodeAVP('Origin-Host', ORIGIN_HOST))
-    invalid_message_avps.append(encodeAVP('Origin-Realm', ORIGIN_REALM))
-    invalid_message_avps.append(encodeAVP('Vendor-Id', 11))
+    dwr_header = generic_request['header']
+    dwr_avps = generic_request['avps']
 
-    # Create the Diameter message by joining the header and the AVPs
-    invalid_message = createReq(invalid_message_header, invalid_message_avps)
+    # Appending to the generic message the DWR specific AVPs
+    dwr_avps.append(encodeAVP('Vendor-Id', 11))
 
-    # send the invalid message using the socket connection
-    connection.send(invalid_message.decode('hex'))
-    # receiving the response for the request
-    response_info = connection.recv(4096)
-
-    # Creating a CEA header to be removed during message decapsulation
-    response_header = HDRItem()
-    stripHdr(response_header, response_info.encode("hex"))
-
-    # Generating the received AVPs from the CEA message
-    response_avps_encoded = splitMsgAVPs(response_header.msg)
-
-    # returning the decoded AVPs
-    return decode_avp_list(response_avps_encoded)
-
-
-def decode_avp_list(avp_list):
-    """
-    Decodes a list of AVPs and returns a dictionary having
-    AVP names as key with the actual value for dictionary values.
-
-    :param avp_list: list of encoded AVPs
-    :return: dictionary of decoded AVPs
-    """
-    decoded_avps = dict()
-    for avp in avp_list:
-        field, value = decodeAVP(avp)
-        decoded_avps[field] = value
-    return decoded_avps
+    # returning a dictionary of the received AVPs
+    avps_dict = send_diameter_request(dwr_header, dwr_avps, connection)
+    return avps_dict
 
 
 if __name__ == '__main__':
@@ -123,10 +149,15 @@ if __name__ == '__main__':
     # Loading the Diameter dictionary for messages, codes and AVPs
     LoadDictionary("dictDiameter.xml")
 
-    # Sending the cer message
+    # Sending the CER message
     cea_avps = send_cer(socket_connection)
     print '\nCEA response:'
     print cea_avps
+
+    # Sending the DWR message
+    dwa_avps = send_dwr(socket_connection)
+    print '\nCEA response:'
+    print dwa_avps
 
     # Sending the invalid message
     invalid_msg_avps = send_invalid_message(socket_connection)

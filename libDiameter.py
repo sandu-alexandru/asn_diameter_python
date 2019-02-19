@@ -123,7 +123,7 @@ def LoadDictionary(file):
 def dictAVPname2code(A,avpname,avpvalue):
     global dict_avps
     dbg="Searching dictionary for N",avpname,"V",avpvalue
-    logging.debug(dbg)
+    # logging.debug(dbg)
     for avp in dict_avps:
         A.name = avp.getAttribute("name")
         A.code = avp.getAttribute("code")
@@ -144,7 +144,7 @@ def dictAVPname2code(A,avpname,avpvalue):
 def dictAVPcode2name(A,avpcode,vendorcode):
     global dict_avps
     dbg="Searching dictionary for ","C",avpcode,"V",vendorcode
-    logging.debug(dbg)
+    # logging.debug(dbg)
     A.vendor=dictVENDORcode2id(int(vendorcode))
     for avp in dict_avps:
         A.name = avp.getAttribute("name")
@@ -157,7 +157,7 @@ def dictAVPcode2name(A,avpcode,vendorcode):
                vId="None"
             if vId==A.vendor:
                return 
-    logging.info("Unsuccessful search")
+    # logging.info("Unsuccessful search")
     A.code=avpcode
     A.name="Unknown Attr-"+str(A.code)+" (Vendor:"+A.vendor+")"
     A.type="OctetString"
@@ -167,7 +167,7 @@ def dictAVPcode2name(A,avpcode,vendorcode):
 def dictVENDORcode2id(code):
     global dict_vendors
     dbg="Searching Vendor dictionary for C",code
-    logging.debug(dbg)
+    # logging.debug(dbg)
     for vendor in dict_vendors:
         vCode=vendor.getAttribute("code")
         vId=vendor.getAttribute("vendor-id")
@@ -180,7 +180,7 @@ def dictVENDORcode2id(code):
 def dictVENDORid2code(vendor_id):
     global dict_vendors
     dbg="Searching Vendor dictionary for V",vendor_id
-    logging.debug(dbg)
+    # logging.debug(dbg)
     for vendor in dict_vendors:
         Code=vendor.getAttribute("code")
         vId=vendor.getAttribute("vendor-id")
@@ -357,7 +357,7 @@ def decode_IP(data):
 def decode_OctetString(data,dlen):
     fs="!"+str(dlen-8)+"s"
     dbg="Deconding String with format:",fs
-    logging.debug(dbg)
+    # logging.debug(dbg)
     ret=struct.unpack(fs,data.decode("hex")[0:dlen-8])[0]
     return ret
 
@@ -371,7 +371,7 @@ def decode_OctetString(data,dlen):
 def decode_UTF8String(data,dlen):
     fs="!"+str(dlen-8)+"s"
     dbg="Decoding UTF8 format:",fs
-    logging.debug(dbg)
+    # logging.debug(dbg)
     ret=struct.unpack(fs,data.decode("hex")[0:dlen-8])[0]
     utf8=utf8decoder(ret)
     return utf8[0]
@@ -393,7 +393,7 @@ def decode_Time(data):
     
 # Quit program with error
 def bailOut(msg):
-    logging.error(msg)
+    # logging.error(msg)
     sys.exit(1)
     
 #Split message into parts (remove field from remaining body)
@@ -423,14 +423,14 @@ def encode_finish(A,flags,pktlen,data):
        flags|=DIAMETER_FLAG_VENDOR
        pktlen+=4
     dbg="Packing","C:",A.code,"F:",flags,"V:",A.vendor,"L:",pktlen,"D:",ret
-    logging.debug(dbg)
+    # logging.debug(dbg)
     ret=("%08X"%int(A.code))+("%02X"%int(flags))+("%06X"%pktlen)+ret
     return ret
     
 def encode_OctetString(A,flags,data):
     fs="!"+str(len(data))+"s"
     dbg="Encoding String format:",fs
-    logging.debug(dbg)
+    # logging.debug(dbg)
     ret=struct.pack(fs,data).encode("hex")
     pktlen=8+len(ret)/2
     return encode_finish(A,flags,pktlen,ret)
@@ -439,7 +439,7 @@ def encode_UTF8String(A,flags,data):
     utf8data=utf8encoder(data)[0]
     fs="!"+str(len(utf8data))+"s"
     dbg="Encoding UTF8",utf8data,"L",len(utf8data),"F",fs
-    logging.debug(dbg)
+    # logging.debug(dbg)
     ret=struct.pack(fs,utf8data).encode("hex")
     pktlen=8+len(ret)/2
     return encode_finish(A,flags,pktlen,ret)
@@ -549,21 +549,21 @@ def getAVPDef(AVP_Name,AVP_Value):
     A=AVPItem()
     dictAVPname2code(A,AVP_Name,AVP_Value)
     if A.name=="":
-       logging.error("AVP with that name not found")
+       # logging.error("AVP with that name not found")
        return ""
     if A.code==0:
-       logging.error("AVP Code not found")
+       # logging.error("AVP Code not found")
        return ""
     if A.type=="":
-       logging.error("AVP type not defined")
+       # logging.error("AVP type not defined")
        return ""
     if A.vendor<0:
-       logging.error("Vendor ID does not match")
+       # logging.error("Vendor ID does not match")
        return ""
     else:
         data=AVP_Value
     dbg="AVP dictionary def","N",A.name,"C",A.code,"M",A.mandatory,"T",A.type,"V",A.vendor,"D",data
-    logging.debug(dbg)
+    # logging.debug(dbg)
     flags=checkMandatory(A.mandatory)
     return do_encode(A,flags,data)
 
@@ -580,7 +580,7 @@ def encodeAVP(AVP_Name,AVP_Value):
     else:
         msg=getAVPDef(AVP_Name,AVP_Value)
     dbg="AVP",AVP_Name,AVP_Value,"Encoded as:",msg
-    logging.info(dbg)
+    # logging.info(dbg)
     return msg
 
 # Calculate message padding
@@ -596,7 +596,7 @@ def decodeAVP(msg):
     (sflag,msg)=chop_msg(msg,2)
     (slen,msg)=chop_msg(msg,6)
     dbg="Decoding ","C",scode,"F",sflag,"L",slen,"D",msg
-    logging.debug(dbg)
+    # logging.debug(dbg)
     mcode=struct.unpack("!I",scode.decode("hex"))[0]
     mflags=ord(sflag.decode("hex"))
     data_len=struct.unpack("!I","\00"+slen.decode("hex"))[0]
@@ -608,59 +608,59 @@ def decodeAVP(msg):
     A=AVPItem()
     dictAVPcode2name(A,mcode,mvid)
     dbg="Read","N",A.name,"T",A.type,"C",A.code,"F",mflags,"L",data_len,"V",A.vendor,mvid,"D",msg
-    logging.debug(dbg)
+    # logging.debug(dbg)
     ret=""
     decoded=False
     if A.type in asI32:
-        logging.debug("Decoding Integer32")
+        # logging.debug("Decoding Integer32")
         ret= decode_Integer32(msg)
         decoded=True
     if A.type in asI64:
         decoded=True
-        logging.debug("Decoding Integer64")
+        # logging.debug("Decoding Integer64")
         ret= decode_Integer64(msg)
     if A.type in asU32:
         decoded=True
-        logging.debug("Decoding Unsigned32")
+        # logging.debug("Decoding Unsigned32")
         ret= decode_Unsigned32(msg)
     if A.type in asU64:
         decoded=True
-        logging.debug("Decoding Unsigned64")
+        # logging.debug("Decoding Unsigned64")
         ret= decode_Unsigned64(msg)
     if A.type in asF32:
         decoded=True
-        logging.debug("Decoding Float32")
+        # logging.debug("Decoding Float32")
         ret= decode_Float32(msg)
     if A.type in asF64:
         decoded=True
-        logging.debug("Decoding Float64")
+        # logging.debug("Decoding Float64")
         ret= decode_Float64(msg)        
     if A.type in asUTF8:
         decoded=True
-        logging.debug("Decoding UTF8String")
+        # logging.debug("Decoding UTF8String")
         ret= decode_UTF8String(msg,data_len)
     if A.type in asIPAddress:
         decoded=True
-        logging.debug("Decoding IPAddress")
+        # logging.debug("Decoding IPAddress")
         ret= decode_Address(msg)
     if A.type in asIP:
         decoded=True
-        logging.debug("Decoding IP")
+        # logging.debug("Decoding IP")
         ret= decode_IP(msg)        
     if A.type in asTime:
         decoded=True
-        logging.debug("Decoding Time")
+        # logging.debug("Decoding Time")
         ret= decode_Time(msg)
     if A.type=="Grouped":
         decoded=True
-        logging.debug("Decoding Grouped")
+        # logging.debug("Decoding Grouped")
         ret= decode_Grouped(msg)
     if not decoded:
       # default is OctetString
-      logging.debug("Decoding OctetString")
+      # logging.debug("Decoding OctetString")
       ret= decode_OctetString(msg,data_len)
     dbg="Decoded as",A.name,ret
-    logging.info(dbg)
+    # logging.info(dbg)
     return (A.name,ret)
 
 # Search for AVP in undecoded list
@@ -721,9 +721,9 @@ def createRes(H,avps):
     ret="01"+"%06X" % H.len+"%02X"%int(H.flags) + "%06X"%int(H.cmd)
     ret=ret+"%08X"%H.appId+"%08X"%H.HopByHop+ "%08X"%H.EndToEnd+data
     dbg="Header fields","L",H.len,"F",H.flags,"C",H.cmd,"A",H.appId,"H",H.HopByHop,"E",H.EndToEnd
-    logging.debug(dbg)
+    # logging.debug(dbg)
     dbg="Diameter hdr+data",ret
-    logging.debug(dbg)
+    # logging.debug(dbg)
     return ret
 
 # Set Hop-by-Hop and End-to-End fields to sane values    
@@ -747,7 +747,7 @@ def initializeHops(H):
 # AVPs in message are NOT splitted
 def stripHdr(H,msg):
     dbg="Incoming Diameter msg",msg
-    logging.info(dbg)
+    # logging.info(dbg)
     if len(msg)==0:
         return ERROR
     (sver,msg)=chop_msg(msg,2)
@@ -758,7 +758,7 @@ def stripHdr(H,msg):
     (shbh,msg)=chop_msg(msg,8)
     (sete,msg)=chop_msg(msg,8)
     dbg="Split hdr","V",sver,"L",slen,"F",sflag,"C",scode,"A",sapp,"H",shbh,"E",sete,"D",msg
-    logging.debug(dbg)
+    # logging.debug(dbg)
     H.ver=ord(sver.decode("hex"))
     H.flags=ord(sflag.decode("hex"))
     H.len=struct.unpack("!I","\00"+slen.decode("hex"))[0]
@@ -767,9 +767,9 @@ def stripHdr(H,msg):
     H.HopByHop=struct.unpack("!I",shbh.decode("hex"))[0]
     H.EndToEnd=struct.unpack("!I",sete.decode("hex"))[0]
     dbg="Read","V",H.ver,"L",H.len,"F",H.flags,"C",H.cmd,"A",H.appId,"H",H.HopByHop,"E",H.EndToEnd
-    logging.debug(dbg)
+    # logging.debug(dbg)
     dbg=dictCOMMANDcode2name(H.flags,H.cmd)
-    logging.info(dbg)
+    # logging.info(dbg)
     H.msg=msg
     return 
 
@@ -779,7 +779,7 @@ def stripHdr(H,msg):
 def splitMsgAVPs(msg):
     ret=[]
     dbg="Incoming avps",msg
-    logging.debug(dbg)
+    # logging.debug(dbg)
     while len(msg)<>0:
       slen="00"+msg[10:16]
       mlen=struct.unpack("!I",slen.decode("hex"))[0]
@@ -787,7 +787,7 @@ def splitMsgAVPs(msg):
       plen=calc_padding(mlen)
       (avp,msg)=chop_msg(msg,2*plen)
       dbg="Single AVP","L",mlen,plen,"D",avp
-      logging.info(dbg)
+      # logging.info(dbg)
       ret.append(avp)
     return ret
 
@@ -825,7 +825,7 @@ def date2epoch(tYear,tMon,tDate,tHr,tMin,tSec):
 # Ver 0.2.0 - Feb 17, 2012 - EAP-Payload decoder
 # Ver 0.2.1 - Feb 19, 2012 - EAP-Payload + AKA/AKA' C calculations
 # Ver 0.2.2 - Feb 23, 2012 - Testing client AKA/AKA'
-# Ver 0.2.3 - Feb 25, 2012 - Multiple bugfixes, logging
+# Ver 0.2.3 - Feb 25, 2012 - Multiple bugfixes, # logging
 # Ver 0.2.4 - Mar 05, 2012 - Simplified dictionary, AVP types in sets
 # Ver 0.2.5 - Mar 14, 2012 - Windows support (socket.inet_ntop, inet_pton)
 # Ver 0.2.6 - Mar 18, 2012 - inet_ntop&pton now supports IPv6 on all platforms
@@ -833,6 +833,6 @@ def date2epoch(tYear,tMon,tDate,tHr,tMin,tSec):
 # Ver 0.2.8 - May 25, 2012 - EAP functions moved to separate source
 # Ver 0.3.1 - Nov 12, 2012 - bugfix in encoding grouped list (fixed wrong length)
 #                          - ipv6 encoding bugfix, comments added
-#                          - logging levels modified, Time support added
+#                          - # logging levels modified, Time support added
 #                          - Enumerated now supports named values
 #                          - Fixed IP handling (now supports IP & IPAddress packing)
