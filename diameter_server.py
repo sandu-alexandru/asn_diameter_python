@@ -26,7 +26,9 @@ class DiameterServer:
                  host="127.0.0.1",
                  port=3868,
                  buffer_size=4096,  # Limit buffer size to collect data
-                 max_clients=5):  # Maximum number of clients accepted
+                 max_clients=5,     # Maximum number of clients accepted
+                 origin_host='server.asn.test',
+                 origin_realm='asn.test'):
         """
         The server accepts data over an open socket, decodes it into
         Diameter Request messages, interprets the data and builds up
@@ -42,9 +44,10 @@ class DiameterServer:
         self.port = port
         self.buffer_size = buffer_size
         self.max_clients = max_clients
+        self.origin_host = origin_host
+        self.origin_realm = origin_realm
 
-    @staticmethod
-    def send_response(socket_connection, request_info):
+    def send_response(self, socket_connection, request_info):
         """
         Method used to send a Diameter response to a request for the server.
 
@@ -67,7 +70,8 @@ class DiameterServer:
         # Generating a response based on the request info and command code
         response = cmd_code_responses.get(
             diameter_request.command_code,
-            response_to_invalid_request)(diameter_request)
+            response_to_invalid_request
+        )(diameter_request, self.origin_host, self.origin_realm)
 
         # Sending the message and returning a Diameter Message object
         socket_connection.send(response.decode('hex'))

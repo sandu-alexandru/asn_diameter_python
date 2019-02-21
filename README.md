@@ -3,8 +3,7 @@ Diameter Client-Server Architecture in Python
 
 This repository contains a sample server which can be used as an Diameter Terminator (sending Diameter responses to specific requests) for the purpose of testing, which I plan to develop further in the future, in order to simulate a CDF (Charging Data Function).
 
-
-For additional information about the Diameter Protocol, please consult https://tools.ietf.org/html/rfc3588
+For additional information about the Diameter Protocol, please consult https://tools.ietf.org/html/rfc6733
 
 Features
 ==========
@@ -24,32 +23,75 @@ Diameter is a Authentication Authorization and Accounting (AAA) protocol. It wor
 
 Diameter is Message (Packet) based protocol. There are two types of messages Request Messages and Answer Messages. The message structure is of following sort:
 
-````````````````````````````````````````````````````````````````````
-____________________________________________________________________
-|   0                   1                   2                   3   |
-|   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 |
-|___________________________________________________________________|
-|       Version       |              Message Length                 |
-|___________________________________________________________________|
-|      command flags  |               Command-Code                  |
-|___________________________________________________________________|
-|                           Application-ID                          |
-|___________________________________________________________________|
-|                        Hop-by-Hop Identifier                      |
-|___________________________________________________________________|
-|                        End-to-End Identifier                      |
-|___________________________________________________________________|
-|    AVPs ...													    |
-|___________________________________________________________________|
+A summary of the Diameter header format is shown below.  The fields
+   are transmitted in network byte order.
 
-````````````````````````````````````````````````````````````````````
-
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |    Version    |                 Message Length                |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | Command Flags |                  Command Code                 |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                         Application-ID                        |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                      Hop-by-Hop Identifier                    |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                      End-to-End Identifier                    |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  AVPs ...
+      +-+-+-+-+-+-+-+-+-+-+-+-+-
 
 Capability negotiation
 ----------
 The basic motive of this process is to KNOW about the other node to which a node intended to communicate before establishing the connection, ie. whether other node contains the applications for which node wants to communicate. 
 
 Technically speaking, It is the process where two diameter peer exchange their identity and its capabilities (such as protocol version number, supported diameter applications, security mechanism etc.). Peer share their capabilities by CER/CEA Message (Capability-Exchange-Request/Capability-Exchange-Answer).
+
+- The Capabilities-Exchange-Request (CER), indicated by the Command
+   Code set to 257 and the Command Flags' 'R' bit set, is sent to
+   exchange local capabilities.
+
+    Message Format
+
+         <CER> ::= < Diameter Header: 257, REQ >
+                   { Origin-Host }
+                   { Origin-Realm }
+                1* { Host-IP-Address }
+                   { Vendor-Id }
+                   { Product-Name }
+                   [ Origin-State-Id ]
+                 * [ Supported-Vendor-Id ]
+                 * [ Auth-Application-Id ]
+                 * [ Inband-Security-Id ]
+                 * [ Acct-Application-Id ]
+                 * [ Vendor-Specific-Application-Id ]
+                   [ Firmware-Revision ]
+                 * [ AVP ]
+
+- The Capabilities-Exchange-Answer (CEA), indicated by the Command Code
+     set to 257 and the Command Flags' 'R' bit cleared, is sent in
+     response to a CER message.
+
+ Message Format
+
+         <CEA> ::= < Diameter Header: 257 >
+                   { Result-Code }
+                   { Origin-Host }
+                   { Origin-Realm }
+                1* { Host-IP-Address }
+                   { Vendor-Id }
+                   { Product-Name }
+                   [ Origin-State-Id ]
+                   [ Error-Message ]
+                   [ Failed-AVP ]
+                 * [ Supported-Vendor-Id ]
+                 * [ Auth-Application-Id ]
+                 * [ Inband-Security-Id ]
+                 * [ Acct-Application-Id ]
+                 * [ Vendor-Specific-Application-Id ]
+                   [ Firmware-Revision ]
+                 * [ AVP ]
 
 
 Transport Failure Detection

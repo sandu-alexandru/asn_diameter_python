@@ -12,11 +12,15 @@ from libDiameter import *
 logging.getLogger().setLevel(logging.INFO)
 
 
-def generate_generic_diameter_message(diameter_request):
+def generate_generic_diameter_message(diameter_request,
+                                      origin_host,
+                                      origin_realm):
     """
     Builds a generic Diameter message, with a Diameter header
     and the standard AVPs.
 
+    :param origin_realm: Diameter Server's origin host
+    :param origin_host: Diameter origin realm
     :param diameter_request: request for which we're building the response
     :return: generic Diameter response that can be used for further processing
     """
@@ -29,10 +33,16 @@ def generate_generic_diameter_message(diameter_request):
 
     # Generating response's standard AVPs
     response_avps = list()
+
+    # Adding server's origin host and realm
+    response_avps.append(encodeAVP('Origin-Host', origin_host))
+    response_avps.append(encodeAVP('Origin-Realm', origin_realm))
+
+    # Setting as the destination host and realm request's origin
     response_avps.append(encodeAVP(
-        'Origin-Host', diameter_request.avps['Origin-Host']))
+        'Destination-Host', diameter_request.avps['Origin-Host']))
     response_avps.append(encodeAVP(
-        'Origin-Realm', diameter_request.avps['Origin-Realm']))
+        'Destination-Realm', diameter_request.avps['Origin-Realm']))
 
     # returning the generic Diameter response
     generic_response = {
@@ -42,7 +52,9 @@ def generate_generic_diameter_message(diameter_request):
     return generic_response
 
 
-def generate_capability_exchange_answer(diameter_request):
+def generate_capability_exchange_answer(diameter_request,
+                                        origin_host,
+                                        origin_realm):
     """
     Method used with the purpose of handling CER requests
     and sending CEA responses.(Capability Exchange)
@@ -53,7 +65,9 @@ def generate_capability_exchange_answer(diameter_request):
 
     logging.info("Responding to Capability Exchange Request ...")
     # Generating a standard Diameter response
-    generic_response = generate_generic_diameter_message(diameter_request)
+    generic_response = generate_generic_diameter_message(diameter_request,
+                                                         origin_host,
+                                                         origin_realm)
     cea_header = generic_response['header']
     cea_avps = generic_response['avps']
 
@@ -62,6 +76,8 @@ def generate_capability_exchange_answer(diameter_request):
         'Result-Code', diameter_base.result_codes['DIAMETER_SUCCESS']))
     cea_avps.append(encodeAVP(
         'Vendor-Id', diameter_request.avps['Vendor-Id']))
+    cea_avps.append(encodeAVP(
+        'Product-Name', diameter_base.standard_avp_values['Product-Name']))
     cea_avps.append(encodeAVP(
         'Origin-State-Id', diameter_request.avps['Origin-State-Id']))
     cea_avps.append(encodeAVP(
@@ -74,7 +90,9 @@ def generate_capability_exchange_answer(diameter_request):
     return cea_message
 
 
-def generate_device_watchdog_answer(diameter_request):
+def generate_device_watchdog_answer(diameter_request,
+                                    origin_host,
+                                    origin_realm):
     """
     Method used with the purpose of handling DWR requests
     and sending DWA responses.(Device Watchdog)
@@ -85,20 +103,26 @@ def generate_device_watchdog_answer(diameter_request):
 
     logging.info("Responding to Device Watchdog Request ...")
     # Generating a standard Diameter response
-    generic_response = generate_generic_diameter_message(diameter_request)
+    generic_response = generate_generic_diameter_message(diameter_request,
+                                                         origin_host,
+                                                         origin_realm)
     dwa_header = generic_response['header']
     dwa_avps = generic_response['avps']
 
     # Customizing it for Device Watchdog Answer
     dwa_avps.append(encodeAVP(
         'Result-Code', diameter_base. result_codes['DIAMETER_SUCCESS']))
+    dwa_avps.append(encodeAVP(
+        'Origin-State-Id', diameter_request.avps['Origin-State-Id']))
 
     # Create the Diameter response message by joining the header and the AVPs
     dwa_message = createRes(dwa_header, dwa_avps)
     return dwa_message
 
 
-def response_to_invalid_request(diameter_request):
+def response_to_invalid_request(diameter_request,
+                                origin_host,
+                                origin_realm):
     """
     Method used to respond to invalid Diameter request.
 
@@ -108,7 +132,9 @@ def response_to_invalid_request(diameter_request):
 
     logging.info("Responding to invalid request...")
     # Generating a standard Diameter response
-    generic_response = generate_generic_diameter_message(diameter_request)
+    generic_response = generate_generic_diameter_message(diameter_request,
+                                                         origin_host,
+                                                         origin_realm)
     response_header = generic_response['header']
     response_avps = generic_response['avps']
 

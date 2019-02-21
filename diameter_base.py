@@ -21,6 +21,13 @@ result_codes = {
     'DIAMETER_UNABLE_TO_COMPLY': 5012,
 }
 
+standard_avp_values = {
+    'Product-Name': 'asn.python.diameter',
+    'Vendor-Id': 10415,
+    'Supported-Vendor-Id': 10415,
+    'Acct-Application-Id': 3,
+}
+
 
 class DiameterMessage:
     """

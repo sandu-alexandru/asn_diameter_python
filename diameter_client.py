@@ -16,8 +16,10 @@ class DiameterClient:
     def __init__(self,
                  host='127.0.0.1',
                  port=3868,
-                 origin_host='asn.client.test',
-                 origin_realm='asn.test'):
+                 origin_host='client.asn.test',
+                 origin_realm='asn.test',
+                 destination_host='server.asn.test',
+                 destination_realm='asn.test'):
         """
         The client establishes a socket connection to server's host address
         at the specified port, and sends the desired Diameter Requests
@@ -33,6 +35,8 @@ class DiameterClient:
         self.port = port
         self.origin_host = origin_host
         self.origin_realm = origin_realm
+        self.destination_host = destination_host
+        self.destination_realm = destination_realm
         self.connection = None
 
     def generate_generic_request(self, command_code):
@@ -49,9 +53,12 @@ class DiameterClient:
         diameter_request.command_code = command_code
         diameter_request.avps['Origin-Host'] = self.origin_host
         diameter_request.avps['Origin-Realm'] = self.origin_realm
+        diameter_request.avps['Destination-Host'] = self.destination_host
+        diameter_request.avps['Destination-Realm'] = self.destination_realm
 
         # Generating a standard Diameter request
-        generic_request = generate_generic_diameter_message(diameter_request)
+        generic_request = generate_generic_diameter_message(
+            diameter_request, self.origin_host, self.origin_realm)
         return generic_request
 
     @staticmethod
@@ -107,10 +114,18 @@ class DiameterClient:
         cer_avps = generic_request['avps']
 
         # Appending the CER specific AVPs
-        cer_avps.append(encodeAVP('Vendor-Id', 11))
-        cer_avps.append(encodeAVP('Origin-State-Id', 1094807040))
-        cer_avps.append(encodeAVP('Supported-Vendor-Id', 11))
-        cer_avps.append(encodeAVP('Acct-Application-Id', 16777265))
+        cer_avps.append(encodeAVP(
+            'Vendor-Id',
+            diameter_base.standard_avp_values['Vendor-Id']))
+        cer_avps.append(encodeAVP(
+            'Product-Name', diameter_base.standard_avp_values['Product-Name']))
+        cer_avps.append(encodeAVP('Origin-State-Id', 1))
+        cer_avps.append(encodeAVP(
+            'Supported-Vendor-Id',
+            diameter_base.standard_avp_values['Supported-Vendor-Id']))
+        cer_avps.append(encodeAVP(
+            'Acct-Application-Id',
+            diameter_base.standard_avp_values['Acct-Application-Id']))
 
         # returning a dictionary of the received AVPs
         avps_dict = self.send_diameter_request(cer_header, cer_avps, connection)
@@ -167,7 +182,7 @@ class DiameterClient:
         dwr_avps = generic_request['avps']
 
         # Appending to the generic message the DWR specific AVPs
-        dwr_avps.append(encodeAVP('Vendor-Id', 11))
+        dwr_avps.append(encodeAVP('Origin-State-Id', 1))
 
         # returning a dictionary of the received AVPs
         avps_dict = self.send_diameter_request(dwr_header, dwr_avps, connection)
