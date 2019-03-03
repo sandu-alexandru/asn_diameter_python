@@ -74,16 +74,22 @@ def generate_capability_exchange_answer(diameter_request,
     # Customizing it for Capability Exchange Answer
     cea_avps.append(encodeAVP(
         'Result-Code', diameter_base.result_codes['DIAMETER_SUCCESS']))
-    cea_avps.append(encodeAVP(
-        'Vendor-Id', diameter_request.avps['Vendor-Id']))
-    cea_avps.append(encodeAVP(
-        'Product-Name', diameter_base.standard_avp_values['Product-Name']))
-    cea_avps.append(encodeAVP(
-        'Origin-State-Id', diameter_request.avps['Origin-State-Id']))
-    cea_avps.append(encodeAVP(
-        'Supported-Vendor-Id', diameter_request.avps['Supported-Vendor-Id']))
-    cea_avps.append(encodeAVP(
-        'Acct-Application-Id', diameter_request.avps['Acct-Application-Id']))
+
+    # Iterating over the request's AVPs and adding them to the response
+    for attribute, value in diameter_request.avps.items():
+        # Grouped AVPs handling
+        if isinstance(value, list):
+            values = []
+            # Handling each AVP from the group
+            for group in value:
+                values.append(encodeAVP(group[0], group[1]))
+            # After creating the list of AVPs
+            # add them as a grouped AVP under the response
+            cea_avps.append((encodeAVP(attribute, values)))
+        # Standard AVPs handling
+        else:
+            if attribute != 'Origin-Host' and attribute != 'Origin-Realm':
+                cea_avps.append((encodeAVP(attribute, value)))
 
     # Create the Diameter response message by joining the header and the AVPs
     cea_message = createRes(cea_header, cea_avps)
