@@ -79,6 +79,7 @@
     <vendor code="4329"  vendor-id="Siemens"          name=">Siemens AG"/>
     <vendor code="5535"  vendor-id="TGPP2" name=">3rd Generation Partnership Project 2 (3GPP2)"/>
     <vendor code="8164"  vendor-id="SN"               name=">Starent Networks"/>
+    <vendor code="9148"  vendor-id="Acme"  name="Acme Packet" />
     <vendor code="9421"  vendor-id="VFD2"             name=">Vodafone D2"/>
     <vendor code="10415" vendor-id="TGPP" name=">3rd Generation Partnership Project (3GPP)"/>
     <vendor code="10548" vendor-id="Netzwert"         name=">Netzwert AG"/>

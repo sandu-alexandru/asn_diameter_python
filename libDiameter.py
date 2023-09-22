@@ -46,7 +46,7 @@ class HDRItem:
         self.len=0
         self.cmd=0
         self.appId=0
-        self.HobByHop=0
+        self.HopByHop=0
         self.EndToEnd=0
         self.msg=""
     

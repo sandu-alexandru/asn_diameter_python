@@ -57,7 +57,7 @@ class DiameterMessage:
             self.length = request_data.len
             self.command_code = request_data.cmd
             self.application_Id = request_data.appId
-            self.HobByHop = request_data.HobByHop
+            self.HopByHop = request_data.HopByHop
             self.EndToEnd = request_data.EndToEnd
             self.hex_msg = request_data.msg
             self.hex_avps = splitMsgAVPs(self.hex_msg)

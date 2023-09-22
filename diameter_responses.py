@@ -29,7 +29,9 @@ def generate_generic_diameter_message(diameter_request,
     # Set Diameter message's command code
     response_header.cmd = diameter_request.command_code
     # Set Hop-by-Hop and End-to-End
-    initializeHops(response_header)
+    # initializeHops(response_header)
+    response_header.HopByHop = diameter_request.HopByHop
+    response_header.EndToEnd = diameter_request.EndToEnd
 
     # Generating response's standard AVPs
     response_avps = list()
